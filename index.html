@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>和賽蓮玩耍！逗逗賽蓮</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap');
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Zen Maru Gothic', sans-serif;
+      touch-action: none;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f7f9fa 50%, #e2e8f0 100%);
+      transition: background 0.6s ease;
+    }
+
+    /* 生氣時的暗黑陰沉背景 */
+    body.is-angry-bg {
+      background: radial-gradient(circle at 50% 40%, #3f1a24 0%, #221319 60%, #0d0609 100%) !important;
+    }
+
+    /* 手繪紙張噪點質感疊層 */
+    .paper-texture {
+      background-image: radial-gradient(#94a3b8 0.6px, transparent 0.6px);
+      background-size: 20px 20px;
+      opacity: 0.25;
+    }
+
+    /* 平常悠閒懸浮 */
+    @keyframes sirenFloat {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-10px) rotate(1.2deg); }
+    }
+    .siren-idle {
+      animation: sirenFloat 3.8s ease-in-out infinite;
+    }
+
+    /* 搔癢顫動 */
+    @keyframes tickleQuiver {
+      0% { transform: translate(3px, -2px) rotate(2deg) scale(1.03); }
+      25% { transform: translate(-3px, 2px) rotate(-2deg) scale(0.97); }
+      50% { transform: translate(3px, 1px) rotate(2.5deg) scale(1.02); }
+      75% { transform: translate(-2px, -2px) rotate(-2deg) scale(0.98); }
+      100% { transform: translate(3px, -2px) rotate(2deg) scale(1.03); }
+    }
+    .siren-tickling {
+      animation: tickleQuiver 0.12s infinite !important;
+    }
+
+    /* 生氣發抖與怒氣升騰 */
+    @keyframes angryShudder {
+      0% { transform: translate(-2px, 0px) scale(1.02); }
+      50% { transform: translate(2px, -2px) scale(1.04); }
+      100% { transform: translate(-2px, 0px) scale(1.02); }
+    }
+    .siren-angry {
+      animation: angryShudder 0.18s infinite !important;
+    }
+
+    /* 小跟班漂浮 */
+    @keyframes minionBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .minion-bob {
+      animation: minionBob 2.5s ease-in-out infinite;
+    }
+
+    /* 逗笑文字上升 */
+    @keyframes floatUpFade {
+      0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+      25% { transform: translate(-50%, -20px) scale(1.15); opacity: 1; }
+      80% { transform: translate(-50%, -50px) scale(1.0); opacity: 1; }
+      100% { transform: translate(-50%, -75px) scale(0.8); opacity: 0; }
+    }
+    .pop-text {
+      animation: floatUpFade 0.85s ease-out forwards;
+    }
+
+    .tool-active {
+      border-color: #e11d48 !important;
+      background: #ffe4e6 !important;
+      color: #be123c !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25);
+    }
+  </style>
+</head>
+<body class="w-screen h-screen relative flex flex-col justify-between items-center cursor-default">
+
+  <!-- 手繪紙張背景質地 -->
+  <div class="paper-texture absolute inset-0 pointer-events-none z-0"></div>
+
+  <!-- 特效 Canvas (歡笑愛心、生氣黑霧雷電、泡泡) -->
+  <canvas id="fx-canvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+
+  <!-- ================= 頂部狀態列 ================= -->
+  <header class="w-full max-w-lg mx-auto px-4 pt-3 z-20 flex flex-col gap-2">
+    <!-- 標題與操作鈕 -->
+    <div class="bg-white/90 backdrop-blur-md px-4 py-2.5 rounded-3xl shadow-sm border-2 border-stone-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-2xl bg-rose-100 border border-stone-800 flex items-center justify-center text-rose-600 font-black text-lg">
+          🧜‍♀️
+        </div>
+        <div>
+          <h1 class="text-base font-black text-stone-900 tracking-wide flex items-center gap-1.5">
+            人魚賽蓮 (Siren)
+            <span id="state-badge" class="text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold">心情好</span>
+          </h1>
+          <p id="hint-text" class="text-xs text-stone-600 font-bold">搔癢逗她笑，但小心別弄太過分喔！</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- 聲音切換 -->
+        <button id="btn-sound" class="w-9 h-9 rounded-2xl bg-white border border-stone-700 flex items-center justify-center text-stone-700 shadow-sm active:scale-95 transition" title="聲音切換">
+          <i class="fa-solid fa-volume-high text-sm"></i>
+        </button>
+        <!-- 重設心情 -->
+        <button id="btn-reset" class="w-9 h-9 rounded-2xl bg-white border border-stone-700 flex items-center justify-center text-stone-700 shadow-sm active:scale-95 transition" title="安撫冷靜">
+          <i class="fa-solid fa-rotate-left text-sm"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 雙重指數槽：開心度 vs 怒氣值 -->
+    <div class="grid grid-cols-2 gap-2">
+      <!-- 開心值 -->
+      <div class="bg-white/90 border-2 border-stone-800 p-2 rounded-2xl shadow-sm flex items-center gap-2">
+        <span class="text-xs font-black text-rose-600 flex items-center gap-1">
+          <i class="fa-solid fa-heart"></i> 開心
+        </span>
+        <div class="flex-1 bg-stone-100 h-3.5 rounded-full overflow-hidden border border-stone-400">
+          <div id="bar-happy" class="h-full bg-gradient-to-r from-pink-400 to-rose-500 rounded-full transition-all duration-200" style="width: 50%;"></div>
+        </div>
+      </div>
+
+      <!-- 生氣值 (過度逗弄會暴走) -->
+      <div class="bg-white/90 border-2 border-stone-800 p-2 rounded-2xl shadow-sm flex items-center gap-2">
+        <span class="text-xs font-black text-stone-800 flex items-center gap-1">
+          <i class="fa-solid fa-fire text-amber-600"></i> 生氣
+        </span>
+        <div class="flex-1 bg-stone-100 h-3.5 rounded-full overflow-hidden border border-stone-400">
+          <div id="bar-anger" class="h-full bg-gradient-to-r from-amber-400 via-rose-600 to-black rounded-full transition-all duration-200" style="width: 0%;"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 中央手繪舞台：賽蓮與手下 ================= -->
+  <main id="stage" class="relative flex-1 w-full flex items-center justify-center z-10">
+    <div id="siren-actor" class="relative siren-idle transition-transform duration-150" style="width: min(88vw, 380px); height: min(88vw, 380px);">
+
+      <!-- 手繪風 SVG 向量圖案 (完全對齊上傳手繪筆觸) -->
+      <svg id="siren-svg" viewBox="0 0 400 400" class="w-full h-full overflow-visible drop-shadow-md">
+        
+        <!-- ================= [手下與周圍元素] ================= -->
+        <!-- 小魷魚 (右下角手繪風) -->
+        <g id="squid" transform="translate(305, 305)" class="minion-bob" style="animation-delay: -0.8s;">
+          <path d="M 15 0 L 30 18 L 0 18 Z" fill="#ffffff" stroke="#1c1917" stroke-width="2.6" stroke-linejoin="round" />
+          <path d="M 0 18 L 30 18 L 27 34 L 3 34 Z" fill="#ffffff" stroke="#1c1917" stroke-width="2.6" stroke-linejoin="round" />
+          <!-- 觸手 -->
+          <path d="M 5 34 Q 3 45 4 48 M 11 34 Q 9 46 11 49 M 16 34 Q 16 46 17 50 M 21 34 Q 22 45 23 48 M 26 34 Q 28 44 29 48" stroke="#1c1917" stroke-width="2.4" stroke-linecap="round" fill="none" />
+          <!-- 眼睛 -->
+          <circle cx="8" cy="25" r="1.8" fill="#1c1917" />
+          <circle cx="22" cy="25" r="1.8" fill="#1c1917" />
+        </g>
+
+        <!-- 頭頂正上方的小人魚手下 -->
+        <g id="minion-top" transform="translate(155, 68)">
+          <!-- 正常狀態 -->
+          <g class="minion-normal">
+            <path d="M 8 36 C 5 20, 15 8, 28 8 C 41 8, 51 20, 48 36 Z" fill="#ffffff" stroke="#1c1917" stroke-width="2.6" />
+            <path d="M 23 8 L 33 8 L 33 22 L 23 22 Z" fill="#dc2626" />
+            <circle cx="21" cy="25" r="1.8" fill="#1c1917" />
+            <circle cx="35" cy="25" r="1.8" fill="#1c1917" />
+            <path d="M 25 30 Q 28 34 31 30" fill="none" stroke="#1c1917" stroke-width="1.8" />
+          </g>
+          <!-- 生氣黑化 -->
+          <g class="minion-angry hidden">
+            <path d="M 8 36 C 5 20, 15 8, 28 8 C 41 8, 51 20, 48 36 Z" fill="#1c1917" stroke="#000000" stroke-width="2.6" />
+            <circle cx="21" cy="25" r="2.2" fill="#ef4444" />
+            <circle cx="35" cy="25" r="2.2" fill="#ef4444" />
+          </g>
+        </g>
+
+        <!-- 右上方小人魚手下 (張口飛動) -->
+        <g id="minion-right" transform="translate(258, 142)" class="minion-bob" style="animation-delay: -1.2s;">
+          <g class="minion-normal">
+            <path d="M 12 38 C 8 20, 18 5, 34 5 C 50 5, 60 20, 56 38 Z" fill="#ffffff" stroke="#1c1917" stroke-width="3" />
+            <!-- 紅冠斑 -->
+            <path d="M 29 5 L 39 5 L 39 20 L 29 20 Z" fill="#dc2626" />
+            <!-- 眼睛手繪點 -->
+            <circle cx="27" cy="24" r="2" fill="#1c1917" />
+            <circle cx="43" cy="24" r="2" fill="#1c1917" />
+            <!-- 開口笑嘴 -->
+            <rect x="31" y="27" width="8" height="6" rx="2" fill="#1c1917" />
+            <!-- 翅膀小手 -->
+            <path d="M 10 28 C 0 25, 2 35, 10 33" stroke="#1c1917" stroke-width="2.6" fill="#ffffff" />
+            <path d="M 58 28 C 68 25, 66 35, 58 33" stroke="#1c1917" stroke-width="2.6" fill="#ffffff" />
+            <!-- 紅魚尾與分叉 -->
+            <path d="M 16 38 C 22 50, 46 50, 52 38 Z" fill="#b91c1c" stroke="#1c1917" stroke-width="2.8" />
+            <path d="M 34 46 L 27 54 M 34 46 L 41 54" stroke="#b91c1c" stroke-width="3.6" stroke-linecap="round" />
+          </g>
+          <g class="minion-angry hidden">
+            <!-- 全身黑漆漆 -->
+            <path d="M 12 38 C 8 20, 18 5, 34 5 C 50 5, 60 20, 56 38 Z" fill="#171717" stroke="#000000" stroke-width="3" />
+            <!-- 黑色小翅膀 -->
+            <path d="M 10 28 C 0 25, 2 35, 10 33" stroke="#000" stroke-width="2.6" fill="#171717" />
+            <path d="M 58 28 C 68 25, 66 35, 58 33" stroke="#000" stroke-width="2.6" fill="#171717" />
+            <!-- 發光紅點眼 -->
+            <circle cx="27" cy="24" r="2.6" fill="#ef4444" />
+            <circle cx="43" cy="24" r="2.6" fill="#ef4444" />
+            <path d="M 16 38 C 22 50, 46 50, 52 38 Z" fill="#171717" stroke="#000" stroke-width="2.8" />
+          </g>
+        </g>
+
+        <!-- 右中小手下 -->
+        <g id="minion-midright" transform="translate(295, 215)" class="minion-bob" style="animation-delay: -0.4s;">
+          <g class="minion-normal">
+            <path d="M 12 38 C 8 20, 18 5, 34 5 C 50 5, 60 20, 56 38 Z" fill="#ffffff" stroke="#1c1917" stroke-width="3" />
+            <path d="M 29 5 L 39 5 L 39 20 L 29 20 Z" fill="#dc2626" />
+            <circle cx="27" cy="24" r="2" fill="#1c1917" />
+            <circle cx="43" cy="24" r="2" fill="#1c1917" />
+            <rect x="31" y="27" width="8" height="6" rx="2" fill="#1c1917" />
+            <path d="M 16 38 C 22 50, 46 50, 52 38 Z" fill="#b91c1c" stroke="#1c1917" stroke-width="2.8" />
+            <path d="M 34 46 L 27 54 M 34 46 L 41 54" stroke="#b91c1c" stroke-width="3.6" stroke-linecap="round" />
+          </g>
+          <g class="minion-angry hidden">
+            <path d="M 12 38 C 8 20, 18 5, 34 5 C 50 5, 60 20, 56 38 Z" fill="#171717" stroke="#000000" stroke-width="3" />
+            <circle cx="27" cy="24" r="2.6" fill="#ef4444" />
+            <circle cx="43" cy="24" r="2.6" fill="#ef4444" />
+            <path d="M 16 38 C 22 50, 46 50, 52 38 Z" fill="#171717" stroke="#000" stroke-width="2.8" />
+          </g>
+        </g>
+
+        <!-- 左下小手下 (第二張生氣圖中出現) -->
+        <g id="minion-left" transform="translate(50, 280)" class="minion-bob hidden" style="animation-delay: -1.7s;">
+          <path d="M 12 38 C 8 20, 18 5, 34 5 C 50 5, 60 20, 56 38 Z" fill="#171717" stroke="#000000" stroke-width="3" />
+          <circle cx="27" cy="24" r="2.4" fill="#ef4444" />
+          <circle cx="43" cy="24" r="2.4" fill="#ef4444" />
+          <path d="M 16 38 C 22 48, 46 48, 52 38 Z" fill="#171717" stroke="#000" stroke-width="2.6" />
+          <path d="M 34 44 L 28 52 M 34 44 L 40 52" stroke="#000" stroke-width="3.6" stroke-linecap="round" />
+        </g>
+
+        <!-- ================= [賽蓮主軀幹] ================= -->
+        <!-- 紅色胖胖美人魚尾巴 (完全還原原畫紅底、手繪波浪鱗片與分叉尾) -->
+        <g id="siren-tail">
+          <!-- 尾部圓肚底 -->
+          <path d="M 105 320 C 105 320, 115 385, 180 380 C 245 375, 255 330, 255 330 Z" 
+                fill="#b91c1c" stroke="#1c1917" stroke-width="4.2" stroke-linejoin="round" />
+
+          <!-- 原畫中的手繪波浪橫線 (鱗紋) -->
+          <path d="M 125 338 Q 145 348 165 338 Q 185 348 205 338 Q 225 348 242 338" 
+                fill="none" stroke="#7f1d1d" stroke-width="3.4" stroke-linecap="round" />
+          <path d="M 135 358 Q 155 368 175 358 Q 195 368 215 358" 
+                fill="none" stroke="#7f1d1d" stroke-width="3.4" stroke-linecap="round" />
+
+          <!-- 下方小分叉尾鰭 (原畫紅色短小雙鰭) -->
+          <g id="tail-fins">
+            <path d="M 172 380 C 158 388, 140 395, 145 404 C 155 408, 172 396, 178 385 Z" fill="#991b1b" stroke="#1c1917" stroke-width="3" />
+            <path d="M 184 380 C 198 388, 216 395, 211 404 C 201 408, 184 396, 178 385 Z" fill="#991b1b" stroke="#1c1917" stroke-width="3" />
+          </g>
+
+          <!-- 肚身與尾巴交界線 -->
+          <path d="M 105 320 C 145 326, 215 326, 255 330" fill="none" stroke="#1c1917" stroke-width="4.2" stroke-linecap="round" />
+        </g>
+
+        <!-- 賽蓮胖圓圓白肚肚與身體輪廓 -->
+        <path id="siren-belly" d="M 105 320 C 75 290, 75 240, 95 190 C 115 150, 245 150, 265 190 C 285 240, 285 290, 255 330 Z" 
+              fill="#ffffff" stroke="#1c1917" stroke-width="4.5" stroke-linejoin="round" />
+
+        <!-- 手繪風左右小手 (翅膀鰭狀手，原圖特色) -->
+        <g id="siren-hands">
+          <!-- 左小手 (鰭狀羽毛紋手) -->
+          <path id="hand-left" d="M 96 230 C 72 235, 62 260, 80 270 C 95 272, 105 255, 108 238" fill="#ffffff" stroke="#1c1917" stroke-width="3.8" stroke-linecap="round" />
+          <!-- 手上的小線條劃痕 -->
+          <path d="M 82 245 L 75 260 M 90 248 L 86 264" stroke="#1c1917" stroke-width="2.6" stroke-linecap="round" />
+
+          <!-- 右手 (伸出打招呼/逗弄互動手) -->
+          <g id="hand-right" transform="translate(0, 0)">
+            <path d="M 252 235 C 278 225, 298 245, 280 262 C 268 268, 252 258, 248 245" fill="#ffffff" stroke="#1c1917" stroke-width="3.8" />
+            <path d="M 264 242 Q 272 248 266 256" stroke="#1c1917" stroke-width="2.6" fill="none" />
+          </g>
+        </g>
+
+        <!-- ================= [賽蓮頭部與臉部：正常版 (第一張)] ================= -->
+        <g id="head-normal">
+          <!-- 圓圓大頭本體 -->
+          <ellipse cx="180" cy="190" rx="90" ry="78" fill="#ffffff" stroke="#1c1917" stroke-width="4.5" />
+
+          <!-- 額頭黑髮：招牌特色中分下垂圓弧 (原畫核心特徵) -->
+          <path d="M 98 165 C 105 105, 255 105, 262 165 C 255 135, 235 125, 218 125 C 205 125, 202 185, 180 185 C 158 185, 155 125, 142 125 C 125 125, 105 135, 98 165 Z" 
+                fill="#1c1917" stroke="#1c1917" stroke-width="2" />
+
+          <!-- 兩顆花朵狀耳朵包包 (左右手繪黑色波浪包) -->
+          <!-- 左耳包 -->
+          <path d="M 104 150 C 90 145, 80 125, 95 110 C 85 95, 110 80, 125 90 C 138 78, 155 92, 145 110 Z" fill="#1c1917" stroke="#1c1917" stroke-width="3" stroke-linejoin="round" />
+          <!-- 右耳包 -->
+          <path d="M 256 150 C 270 145, 280 125, 265 110 C 275 95, 250 80, 235 90 C 222 78, 205 92, 215 110 Z" fill="#1c1917" stroke="#1c1917" stroke-width="3" stroke-linejoin="round" />
+
+          <!-- 原畫耳包內的紅色珊瑚手繪花飾 -->
+          <path d="M 98 112 Q 106 102 118 108 Q 128 104 130 114" fill="none" stroke="#dc2626" stroke-width="4.2" stroke-linecap="round" />
+          <path d="M 105 115 Q 112 120 122 118" fill="none" stroke="#dc2626" stroke-width="3.8" stroke-linecap="round" />
+          
+          <path d="M 262 112 Q 254 102 242 108 Q 232 104 230 114" fill="none" stroke="#dc2626" stroke-width="4.2" stroke-linecap="round" />
+          <path d="M 255 115 Q 248 120 238 118" fill="none" stroke="#dc2626" stroke-width="3.8" stroke-linecap="round" />
+
+          <!-- 賽蓮招牌手繪眼睛 (直橢圓黑框、內襯留白大光圈、短睫毛) -->
+          <!-- 左眼 -->
+          <g id="eye-left-normal">
+            <ellipse cx="140" cy="215" rx="14" ry="22" fill="#1c1917" />
+            <!-- 白色反光核 -->
+            <ellipse cx="140" cy="215" rx="7.5" ry="15.5" fill="#ffffff" />
+            <!-- 下方短鬍鬚狀手繪小細線 -->
+            <path d="M 120 236 L 132 238 M 121 243 L 133 243" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round" />
+            <!-- 眉毛細痕 -->
+            <path d="M 134 186 Q 140 184 146 186" stroke="#1c1917" stroke-width="2" stroke-linecap="round" fill="none" />
+          </g>
+
+          <!-- 右眼 -->
+          <g id="eye-right-normal">
+            <ellipse cx="220" cy="215" rx="14" ry="22" fill="#1c1917" />
+            <!-- 白色反光核 -->
+            <ellipse cx="220" cy="215" rx="7.5" ry="15.5" fill="#ffffff" />
+            <!-- 下方短鬍鬚狀手繪小細線 -->
+            <path d="M 240 236 L 228 238 M 239 243 L 227 243" stroke="#1c1917" stroke-width="2.2" stroke-linecap="round" />
+            <!-- 眉毛細痕 -->
+            <path d="M 226 186 Q 220 184 214 186" stroke="#1c1917" stroke-width="2" stroke-linecap="round" fill="none" />
+          </g>
+
+          <!-- 咯咯笑月牙眼 (搔癢時切換) -->
+          <g id="eye-laugh" class="hidden">
+            <path d="M 125 218 Q 140 200 155 218" fill="none" stroke="#1c1917" stroke-width="4.8" stroke-linecap="round" />
+            <path d="M 205 218 Q 220 200 235 218" fill="none" stroke="#1c1917" stroke-width="4.8" stroke-linecap="round" />
+          </g>
+
+          <!-- 賽蓮小嘴巴 (手繪開口貓貓嘴) -->
+          <g id="mouth-group">
+            <path id="mouth-default" d="M 174 236 Q 180 230 186 236 L 180 248 Z" fill="#1c1917" stroke="#1c1917" stroke-width="2" stroke-linejoin="round" />
+            <!-- 大笑開懷大嘴 (逗笑切換) -->
+            <path id="mouth-laugh" class="hidden" d="M 170 234 Q 180 228 190 234 C 193 252, 167 252, 170 234 Z" fill="#dc2626" stroke="#1c1917" stroke-width="3" stroke-linejoin="round" />
+          </g>
+
+          <!-- 圓圓可愛腮紅 -->
+          <circle id="blush-l" cx="118" cy="225" r="10" fill="#f43f5e" opacity="0.35" />
+          <circle id="blush-r" cx="242" cy="225" r="10" fill="#f43f5e" opacity="0.35" />
+        </g>
+
+        <!-- ================= [賽蓮頭部與臉部：生氣黑化版 (第二張圖)] ================= -->
+        <!-- 臉完全黑黑、頭部漆黑成團、露出恐怖紅色發光橢圓眼！ -->
+        <g id="head-angry" class="hidden">
+          <!-- 整個頭部與雙耳包化為手繪塗黑的黑炭陰影團 (完全還原第二張圖) -->
+          <path d="M 100 135 C 80 115, 80 85, 115 75 C 130 65, 155 75, 160 90 C 175 70, 205 70, 220 90 C 235 75, 260 70, 275 95 C 295 115, 280 145, 265 160 C 285 190, 285 240, 255 270 C 220 290, 140 290, 105 270 C 75 235, 75 185, 95 155 Z" 
+                fill="#120c10" stroke="#000000" stroke-width="6" stroke-linejoin="round" />
+          
+          <!-- 手繪黑炭塗色質感疊層 (筆觸墨水線) -->
+          <path d="M 115 150 C 130 180, 160 170, 190 180 C 220 170, 245 190, 255 160" stroke="#261a22" stroke-width="8" stroke-linecap="round" fill="none" />
+          <path d="M 105 210 C 130 240, 180 235, 250 215" stroke="#261a22" stroke-width="10" stroke-linecap="round" fill="none" />
+          
+          <!-- 生氣時可怕的紅色發光橢圓大眼睛 (第二張圖核心特徵) -->
+          <!-- 左生氣眼 -->
+          <ellipse cx="140" cy="215" rx="15" ry="21" fill="#ef4444" stroke="#ffffff" stroke-width="3" />
+          <ellipse cx="140" cy="215" rx="7.5" ry="14" fill="#120c10" />
+
+          <!-- 右生氣眼 -->
+          <ellipse cx="220" cy="215" rx="15" ry="21" fill="#ef4444" stroke="#ffffff" stroke-width="3" />
+          <ellipse cx="220" cy="215" rx="7.5" ry="14" fill="#120c10" />
+
+          <!-- 怒氣嘴巴直線 -->
+          <path d="M 170 248 L 190 248" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+        </g>
+      </svg>
+    </div>
+  </main>
+
+  <!-- ================= 底部互動道具列 ================= -->
+  <footer class="w-full max-w-lg mx-auto px-4 pb-4 z-20">
+    <div class="bg-white/90 backdrop-blur-md px-3.5 py-3 rounded-3xl shadow-lg border-2 border-stone-800 flex flex-col gap-2">
+      <div class="flex justify-between items-center text-xs font-bold text-stone-700 px-1">
+        <span id="tool-status-text">🪶 用羽毛摸摸賽蓮，看她笑得多開心！</span>
+        <span id="anger-warning" class="text-rose-600 hidden font-black animate-pulse">⚠️ 她快要生氣了！</span>
+      </div>
+
+      <!-- 4 種互動功能按鈕 -->
+      <div class="grid grid-cols-4 gap-2">
+        <!-- 1. 羽毛搔癢 -->
+        <button id="btn-feather" class="tool-btn tool-active flex flex-col items-center justify-center p-2 rounded-2xl bg-white border-2 border-stone-300 text-stone-800 transition active:scale-95" data-tool="feather">
+          <span class="text-2xl">🪶</span>
+          <span class="text-[11px] font-black mt-0.5">搔癢癢</span>
+        </button>
+
+        <!-- 2. 戳肚肚 -->
+        <button id="btn-poke" class="tool-btn flex flex-col items-center justify-center p-2 rounded-2xl bg-white border-2 border-stone-300 text-stone-800 transition active:scale-95" data-tool="poke">
+          <span class="text-2xl">👉</span>
+          <span class="text-[11px] font-black mt-0.5">戳戳肉肉</span>
+        </button>
+
+        <!-- 3. 餵小魷魚 (消氣/逗樂最有效) -->
+        <button id="btn-feed" class="tool-btn flex flex-col items-center justify-center p-2 rounded-2xl bg-white border-2 border-stone-300 text-stone-800 transition active:scale-95" data-tool="feed">
+          <span class="text-2xl">🦑</span>
+          <span class="text-[11px] font-black mt-0.5">餵小魷魚</span>
+        </button>
+
+        <!-- 4. 摸摸頭安撫 -->
+        <button id="btn-pet" class="tool-btn flex flex-col items-center justify-center p-2 rounded-2xl bg-white border-2 border-stone-300 text-stone-800 transition active:scale-95" data-tool="pet">
+          <span class="text-2xl">✋</span>
+          <span class="text-[11px] font-black mt-0.5">摸頭消氣</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= JavaScript 邏輯 ================= -->
+  <script>
+    /* -------------------------------------------------------------
+     * 1. 遊戲核心變數與情緒邏輯
+     * ------------------------------------------------------------- */
+    let happiness = 50;  // 0 ~ 100
+    let anger = 0;        // 0 ~ 100
+    let isAngryState = false; // 是否進入「臉黑黑」第二張圖狀態
+    let activeTool = 'feather';
+    let isMuted = false;
+
+    // DOM 元素引用
+    const sirenActor = document.getElementById('siren-actor');
+    const barHappy = document.getElementById('bar-happy');
+    const barAnger = document.getElementById('bar-anger');
+    const stateBadge = document.getElementById('state-badge');
+    const hintText = document.getElementById('hint-text');
+    const toolStatusText = document.getElementById('tool-status-text');
+    const angerWarning = document.getElementById('anger-warning');
+
+    const headNormal = document.getElementById('head-normal');
+    const headAngry = document.getElementById('head-angry');
+    const eyeNormalL = document.getElementById('eye-left-normal');
+    const eyeNormalR = document.getElementById('eye-right-normal');
+    const eyeLaugh = document.getElementById('eye-laugh');
+    const mouthDefault = document.getElementById('mouth-default');
+    const mouthLaugh = document.getElementById('mouth-laugh');
+
+    const minionsNormal = document.querySelectorAll('.minion-normal');
+    const minionsAngry = document.querySelectorAll('.minion-angry');
+    const minionLeft = document.getElementById('minion-left');
+
+    /* -------------------------------------------------------------
+     * 2. Web Audio 原生音效合成
+     * ------------------------------------------------------------- */
+    let audioCtx = null;
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    // 咯咯笑聲
+    function playSfxLaugh() {
+      if (isMuted) return;
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      [580, 720, 880, 1100].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(freq + Math.random() * 40, now + idx * 0.05);
+        gain.gain.setValueAtTime(0.18, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.09);
+      });
+    }
+
+    // 果凍彈跳戳擊聲
+    function playSfxPoke() {
+      if (isMuted) return;
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(620, now + 0.08);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.2);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.23);
+    }
+
+    // 嚼魷魚吃東西聲
+    function playSfxFeed() {
+      if (isMuted) return;
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      [0, 0.09, 0.18].forEach((t, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.setValueAtTime(450 + i * 120, now + t);
+        gain.gain.setValueAtTime(0.2, now + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.07);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + t);
+        osc.stop(now + t + 0.08);
+      });
+    }
+
+    // 摸頭舒服呼嚕聲
+    function playSfxPet() {
+      if (isMuted) return;
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(330, now);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    // 生氣變身低鳴咆哮與驚嚇雷電聲
+    function playSfxRoar() {
+      if (isMuted) return;
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.55);
+    }
+
+    /* -------------------------------------------------------------
+     * 3. 狀態變換：生氣黑化與冷靜笑顏
+     * ------------------------------------------------------------- */
+    function triggerAngryState() {
+      if (isAngryState) return;
+      isAngryState = true;
+      document.body.classList.add('is-angry-bg');
+      sirenActor.classList.remove('siren-idle', 'siren-tickling');
+      sirenActor.classList.add('siren-angry');
+
+      // 切換為第二張圖的臉黑黑外觀
+      headNormal.classList.add('hidden');
+      headAngry.classList.remove('hidden');
+
+      // 小手下也黑化
+      minionsNormal.forEach(el => el.classList.add('hidden'));
+      minionsAngry.forEach(el => el.classList.remove('hidden'));
+      minionLeft.classList.remove('hidden'); // 原第二張圖中的黑色新手下現身
+
+      stateBadge.innerText = '氣炸了！';
+      stateBadge.className = 'text-[10px] bg-stone-900 text-rose-500 border border-rose-500 px-2 py-0.5 rounded-full font-black animate-pulse';
+      hintText.innerText = '臉黑掉了！快餵小魷魚或摸摸頭幫賽蓮消氣！';
+
+      playSfxRoar();
+      addBurstParticles(window.innerWidth / 2, window.innerHeight * 0.45, 25, 'dark');
+    }
+
+    function recoverFromAnger() {
+      if (!isAngryState) return;
+      isAngryState = false;
+      document.body.classList.remove('is-angry-bg');
+      sirenActor.classList.remove('siren-angry');
+      sirenActor.classList.add('siren-idle');
+
+      // 恢復第一張圖正常可愛樣貌
+      headNormal.classList.remove('hidden');
+      headAngry.classList.add('hidden');
+
+      minionsNormal.forEach(el => el.classList.remove('hidden'));
+      minionsAngry.forEach(el => el.classList.add('hidden'));
+      minionLeft.classList.add('hidden');
+
+      anger = 0;
+      happiness = 60;
+      updateStatusBars();
+
+      stateBadge.innerText = '心情好';
+      stateBadge.className = 'text-[10px] bg-rose-500 text-white px-2 py-0.5 rounded-full font-bold';
+      hintText.innerText = '呼～賽蓮恢復正常了，笑臉回來囉！';
+      addBurstParticles(window.innerWidth / 2, window.innerHeight * 0.45, 18, 'heart');
+    }
+
+    function updateStatusBars() {
+      barHappy.style.width = `${happiness}%`;
+      barAnger.style.width = `${anger}%`;
+
+      if (anger > 65) {
+        angerWarning.classList.remove('hidden');
+      } else {
+        angerWarning.classList.add('hidden');
+      }
+
+      if (anger >= 100 && !isAngryState) {
+        triggerAngryState();
+      }
+    }
+
+    // 暫時大笑表情切換
+    let laughTimeout = null;
+    function setTemporaryLaugh(duration = 800) {
+      if (isAngryState) return;
+      eyeNormalL.classList.add('hidden');
+      eyeNormalR.classList.add('hidden');
+      eyeLaugh.classList.remove('hidden');
+      mouthDefault.classList.add('hidden');
+      mouthLaugh.classList.remove('hidden');
+
+      clearTimeout(laughTimeout);
+      laughTimeout = setTimeout(() => {
+        if (!isAngryState) {
+          eyeNormalL.classList.remove('hidden');
+          eyeNormalR.classList.remove('hidden');
+          eyeLaugh.classList.add('hidden');
+          mouthDefault.classList.remove('hidden');
+          mouthLaugh.classList.add('hidden');
+        }
+      }, duration);
+    }
+
+    /* -------------------------------------------------------------
+     * 4. 浮動文字與粒子效果
+     * ------------------------------------------------------------- */
+    function showText(str, x, y, color = '#e11d48') {
+      const el = document.createElement('div');
+      el.className = 'pop-text fixed font-black text-sm sm:text-base px-3 py-1 rounded-full shadow border-2 border-stone-800 pointer-events-none z-50';
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.backgroundColor = isAngryState ? '#1c1917' : '#ffffff';
+      el.style.color = color;
+      el.innerText = str;
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 850);
+    }
+
+    const laughQuotes = ['咯咯咯！', '呀哈～！', '好癢喔！', '嘻嘻嘻！', '別弄啦～哈哈！'];
+    const angryQuotes = ['嗚嘎——！', '盯——！', '不要再弄了！', '氣噗噗！'];
+
+    /* -------------------------------------------------------------
+     * 5. 特效 Canvas 渲染系統 (紙花、黑煙、紅電、愛心)
+     * ------------------------------------------------------------- */
+    const fxCanvas = document.getElementById('fx-canvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    let width = (fxCanvas.width = window.innerWidth);
+    let height = (fxCanvas.height = window.innerHeight);
+
+    window.addEventListener('resize', () => {
+      width = fxCanvas.width = window.innerWidth;
+      height = fxCanvas.height = window.innerHeight;
+    });
+
+    let particles = [];
+
+    function addBurstParticles(x, y, count = 12, type = 'heart') {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.7) * 8,
+          size: Math.random() * 8 + 4,
+          alpha: 1,
+          type: type
+        });
+      }
+    }
+
+    function renderParticles() {
+      fxCtx.clearRect(0, 0, width, height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.2;
+        p.alpha -= 0.02;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        fxCtx.save();
+        fxCtx.globalAlpha = p.alpha;
+        if (p.type === 'dark') {
+          fxCtx.fillStyle = '#ef4444';
+          fxCtx.fillRect(p.x, p.y, p.size * 1.2, p.size * 1.2);
+        } else {
+          fxCtx.fillStyle = '#f43f5e';
+          fxCtx.font = `${Math.floor(p.size * 2)}px sans-serif`;
+          fxCtx.fillText('❤️', p.x, p.y);
+        }
+        fxCtx.restore();
+      }
+
+      requestAnimationFrame(renderParticles);
+    }
+    renderParticles();
+
+    /* -------------------------------------------------------------
+     * 6. 工具切換與點擊互動
+     * ------------------------------------------------------------- */
+    const toolButtons = document.querySelectorAll('.tool-btn');
+    const toolHints = {
+      feather: '🪶 用羽毛摸摸賽蓮，看她笑得多開心！',
+      poke: '👉 戳戳小肚肚，感受軟綿綿的果凍手感！',
+      feed: '🦑 遞上手繪小魷魚，這是賽蓮最愛的美食！',
+      pet: '✋ 溫柔摸摸頭，讓激動或生氣的賽蓮放鬆下來～'
+    };
+
+    toolButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        toolButtons.forEach(b => b.classList.remove('tool-active'));
+        btn.classList.add('tool-active');
+        activeTool = btn.dataset.tool;
+        toolStatusText.innerText = toolHints[activeTool];
+      });
+    });
+
+    const stage = document.getElementById('stage');
+    let lastTickleTime = 0;
+    let lastPos = { x: 0, y: 0 };
+    let tickleTimer = null;
+
+    function handleInteraction(clientX, clientY, isMove = false) {
+      const now = Date.now();
+
+      // [情況 A] 處於「生氣臉黑黑」狀態
+      if (isAngryState) {
+        if (activeTool === 'feed') {
+          // 餵魷魚能快速消氣
+          playSfxFeed();
+          showText('好吃...（咀嚼消氣中）', clientX, clientY - 20, '#fbbf24');
+          recoverFromAnger();
+        } else if (activeTool === 'pet') {
+          // 摸摸頭安撫
+          playSfxPet();
+          anger = Math.max(0, anger - 35);
+          showText('（氣消了一點...）', clientX, clientY - 20, '#38bdf8');
+          if (anger <= 20) {
+            recoverFromAnger();
+          } else {
+            updateStatusBars();
+          }
+        } else {
+          // 在生氣時如果還繼續戳或抓弄，她會更火大
+          playSfxRoar();
+          showText(angryQuotes[Math.floor(Math.random() * angryQuotes.length)], clientX, clientY - 20, '#ef4444');
+          addBurstParticles(clientX, clientY, 6, 'dark');
+        }
+        return;
+      }
+
+      // [情況 B] 正常狀態下的逗弄
+      if (activeTool === 'feather') {
+        // 搔癢：笑的同時也會快速累積怒氣 (連續重複弄她會生氣！)
+        if (now - lastTickleTime > 140) {
+          lastTickleTime = now;
+          playSfxLaugh();
+          setTemporaryLaugh(900);
+
+          sirenActor.classList.add('siren-tickling');
+          clearTimeout(tickleTimer);
+          tickleTimer = setTimeout(() => sirenActor.classList.remove('siren-tickling'), 260);
+
+          happiness = Math.min(100, happiness + 4);
+          anger = Math.min(100, anger + 7); // 重複抓癢會累積生氣！
+          updateStatusBars();
+
+          const quote = laughQuotes[Math.floor(Math.random() * laughQuotes.length)];
+          showText(quote, clientX, clientY - 15, '#e11d48');
+          addBurstParticles(clientX, clientY, 4, 'heart');
+        }
+      } 
+      else if (activeTool === 'poke' && !isMove) {
+        // 戳肚肚果凍拉伸
+        playSfxPoke();
+        setTemporaryLaugh(700);
+
+        sirenActor.style.transform = 'scale(0.88, 1.15)';
+        setTimeout(() => {
+          sirenActor.style.transform = 'scale(1.12, 0.9)';
+          setTimeout(() => sirenActor.style.transform = '', 160);
+        }, 120);
+
+        happiness = Math.min(100, happiness + 5);
+        anger = Math.min(100, anger + 9); // 重複戳也會讓她不耐煩！
+        updateStatusBars();
+
+        showText('噗嘰～！', clientX, clientY - 15, '#be123c');
+        addBurstParticles(clientX, clientY, 5, 'heart');
+      } 
+      else if (activeTool === 'feed' && !isMove) {
+        // 餵食小魷魚：降低怒氣，大幅增加快樂！
+        playSfxFeed();
+        setTemporaryLaugh(1200);
+
+        happiness = Math.min(100, happiness + 15);
+        anger = Math.max(0, anger - 25);
+        updateStatusBars();
+
+        showText('超喜歡小魷魚！💕', clientX, clientY - 20, '#f59e0b');
+        addBurstParticles(clientX, clientY, 8, 'heart');
+      } 
+      else if (activeTool === 'pet') {
+        // 摸摸頭安撫降怒
+        if (now - lastTickleTime > 200) {
+          lastTickleTime = now;
+          playSfxPet();
+          anger = Math.max(0, anger - 12);
+          happiness = Math.min(100, happiness + 2);
+          updateStatusBars();
+          showText('呼嚕嚕～舒服 (怒氣下降)', clientX, clientY - 15, '#0ea5e9');
+        }
+      }
+    }
+
+    // 事件監聽 (滑鼠與觸控)
+    let isMouseDown = false;
+
+    stage.addEventListener('mousedown', (e) => {
+      isMouseDown = true;
+      handleInteraction(e.clientX, e.clientY, false);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isMouseDown) return;
+      const dist = Math.hypot(e.clientX - lastPos.x, e.clientY - lastPos.y);
+      if (dist > 15) {
+        lastPos = { x: e.clientX, y: e.clientY };
+        handleInteraction(e.clientX, e.clientY, true);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      isMouseDown = false;
+      sirenActor.classList.remove('siren-tickling');
+    });
+
+    stage.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      handleInteraction(touch.clientX, touch.clientY, false);
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0];
+      const dist = Math.hypot(touch.clientX - lastPos.x, touch.clientY - lastPos.y);
+      if (dist > 15) {
+        lastPos = { x: touch.clientX, y: touch.clientY };
+        handleInteraction(touch.clientX, touch.clientY, true);
+      }
+    }, { passive: true });
+
+    // 重設心情按鈕
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      recoverFromAnger();
+      anger = 0;
+      happiness = 50;
+      updateStatusBars();
+    });
+
+    // 靜音開關
+    const btnSound = document.getElementById('btn-sound');
+    btnSound.addEventListener('click', () => {
+      isMuted = !isMuted;
+      btnSound.innerHTML = isMuted 
+        ? '<i class="fa-solid fa-volume-xmark text-rose-500"></i>' 
+        : '<i class="fa-solid fa-volume-high text-stone-700"></i>';
+    });
+
+    // 賽蓮自然隨時間慢慢冷靜
+    setInterval(() => {
+      if (!isAngryState && anger > 0) {
+        anger = Math.max(0, anger - 2);
+        updateStatusBars();
+      }
+    }, 1500);
+  </script>
+</body>
+</html>
